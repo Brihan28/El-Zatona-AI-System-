@@ -89,7 +89,10 @@ const SummaryPage = () => {
     setError("");
 
     try {
-      const { data } = await axios.post<{ summary: string }>(SUMMARY_API_URL, { text: extractedText });
+      const { data } = await axios.post<{ summary: string }>(SUMMARY_API_URL, {
+        text: extractedText,
+        length,
+      });
       setSummary(data.summary || "");
     } catch (err) {
       const message = axios.isAxiosError(err)

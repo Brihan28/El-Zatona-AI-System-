@@ -2,13 +2,17 @@ const { summarizeText } = require("../services/aiService");
 
 const generateSummary = async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, length = "medium" } = req.body;
 
     if (!text || typeof text !== "string" || !text.trim()) {
       return res.status(400).json({ error: "Text is required" });
     }
 
-    const summary = await summarizeText(text);
+    if (!["short", "medium", "long"].includes(length)) {
+      return res.status(400).json({ error: "Invalid summary length" });
+    }
+
+    const summary = await summarizeText(text, length);
 
     res.json({ summary });
   } catch (err) {
