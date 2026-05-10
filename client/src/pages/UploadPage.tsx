@@ -1,14 +1,23 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, FileText, Eye, Trash2, CloudUpload } from "lucide-react";
 
+interface UploadedFile {
+  _id: string;
+  filename: string;
+  uploadedAt: string;
+  extractedText?: string;
+}
+
 const UploadPage = () => {
   const [dragActive, setDragActive] = useState(false);
-  const [files, setFiles] = useState<any[]>([]);
+  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const navigate = useNavigate();
 
   // =========================
   // 📂 FETCH FILES
@@ -185,6 +194,18 @@ const UploadPage = () => {
                 </div>
 
                 <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      navigate("/summary", {
+                        state: { extractedText: f.extractedText || "", title: f.filename },
+                      })
+                    }
+                  >
+                    Summary
+                  </Button>
+
                   {/* 👁 VIEW */}
                   <Button
                     variant="ghost"
