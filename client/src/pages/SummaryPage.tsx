@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useLocation } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -71,14 +71,6 @@ const SummaryPage = () => {
     fetchExtractedText();
   }, [state.extractedText, state.fileId, state.title]);
 
-  const displaySummary = useMemo(() => {
-    if (!summary) return "";
-    const lines = summary.split("\n").filter((line) => line.trim() !== "");
-    if (length === "short") return lines.slice(0, Math.max(4, Math.ceil(lines.length * 0.35))).join("\n");
-    if (length === "medium") return lines.slice(0, Math.max(8, Math.ceil(lines.length * 0.7))).join("\n");
-    return summary;
-  }, [length, summary]);
-
   const generateSummary = async () => {
     if (!extractedText.trim()) {
       setError("No extracted PDF text found. Please upload a file first.");
@@ -91,7 +83,7 @@ const SummaryPage = () => {
     try {
       const { data } = await axios.post<{ summary: string }>(SUMMARY_API_URL, {
         text: extractedText,
-        length,
+        type: length,
       });
       setSummary(data.summary || "");
     } catch (err) {
@@ -148,7 +140,7 @@ const SummaryPage = () => {
 
           {!loading && !!summary && (
             <div className="prose prose-sm max-w-none text-foreground">
-              {displaySummary.split("\n").map((line, i) =>
+              {summary.split("\n").map((line, i) =>
                 line.startsWith("**") && line.endsWith("**") ? (
                   <h3 key={i} className="font-heading text-base font-semibold mt-4 mb-2">{line.replace(/\*\*/g, "")}</h3>
                 ) : line.startsWith("- ") ? (
