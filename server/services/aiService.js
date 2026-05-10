@@ -1,5 +1,11 @@
 const axios = require("axios");
 
+const SUMMARY_RULES = {
+  short: { min: 50, max: 100 },
+  medium: { min: 100, max: 150 },
+  long: { min: 200, max: 300 },
+};
+
 // 🧹 CLEAN TEXT
 const cleanText = (text) => {
   return text
@@ -12,13 +18,13 @@ const cleanText = (text) => {
     .replace(/\b\d+\b/g, "")
     .trim();
 };
-// 🧠 SMART CHUNKING
+
 const splitIntoChunks = (text, maxLength = 3000) => {
   const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
   const chunks = [];
   let current = "";
 
-  for (let s of sentences) {
+  for (const s of sentences) {
     if ((current + s).length > maxLength) {
       chunks.push(current);
       current = s;
@@ -26,23 +32,28 @@ const splitIntoChunks = (text, maxLength = 3000) => {
       current += s;
     }
   }
+
   if (current) chunks.push(current);
   return chunks;
 };
 
-// 🤖 OPENROUTER CALL (GPT-3.5 ✅)
+const countWords = (text) => {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+};
+
+const isWithinRange = (text, type) => {
+  const { min, max } = SUMMARY_RULES[type];
+  const wordCount = countWords(text);
+  return wordCount >= min && wordCount <= max;
+};
+
 const callAI = async (prompt) => {
   const res = await axios.post(
     "https://openrouter.ai/api/v1/chat/completions",
     {
       model: "openai/gpt-3.5-turbo",
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.3,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
     },
     {
       headers: {
@@ -55,67 +66,70 @@ const callAI = async (prompt) => {
   return res.data.choices[0].message.content;
 };
 
-// 🔹 ORGANIZE (NOT summarizing heavily)
 const organizeChunk = async (chunk) => {
   const prompt = `
 You are an academic assistant.
 
 TASK:
-Clean and ORGANIZE this raw PDF text into structured notes.
+Clean and organize this raw PDF text into structured study notes.
 
 RULES:
-- Keep MOST content (do NOT heavily summarize)
+- Keep most important academic content
 - Remove noise (headers, repeated text, page numbers)
 - Group related ideas
-- Use headings
-- Improve readability
+- Preserve definitions, steps, and examples
+- Keep headings only if present in source content
 
 TEXT:
 ${chunk}
 `;
+
   return await callAI(prompt);
 };
 
-// 🔹 FINAL REFINE
-const refineFinal = async (text) => {
+const refineFinal = async (text, type, attempt = 1) => {
+  const { min, max } = SUMMARY_RULES[type];
+
   const prompt = `
-Create clean, well-structured study notes.
+Create ONE clean paragraph summary.
 
-RULES:
-- Keep ALL important content
-- Remove repetition
-- Organize into sections
-- Use clear headings
-- Keep explanations detailed
-- DO NOT shorten too much
+STRICT REQUIREMENTS:
+- Summary type: ${type}
+- Word count must be between ${min} and ${max} words.
+- Preserve key concepts (definitions, steps, examples).
+- Keep meaning accurate; only adjust verbosity.
+- No bullet points unless source is inherently structured that way.
+- Return only the summary text.
+${attempt > 1 ? `- Previous attempt missed word range. Make this fit exactly ${min}-${max} words.` : ""}
 
-TEXT:
+CONTENT:
 ${text}
 `;
+
   return await callAI(prompt);
 };
 
-// 🚀 MAIN FUNCTION
-const summarizeText = async (text) => {
+const summarizeText = async (text, type = "medium") => {
   try {
-    text = cleanText(text);
-
-    const chunks = splitIntoChunks(text);
-    console.log("Total chunks:", chunks.length);
+    const clean = cleanText(text);
+    const chunks = splitIntoChunks(clean);
 
     const organized = [];
-
-    for (let chunk of chunks) {
-      const result = await organizeChunk(chunk);
-      organized.push(result);
+    for (const chunk of chunks) {
+      organized.push(await organizeChunk(chunk));
     }
 
     const combined = organized.join("\n\n");
 
-    const final = await refineFinal(combined);
+    const maxRetries = 4;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const final = (await refineFinal(combined, type, attempt)).trim();
+      if (isWithinRange(final, type)) {
+        return final;
+      }
+    }
 
-    return final;
-
+    throw new Error("Unable to fit summary into requested word range");
   } catch (err) {
     console.error(err.response?.data || err.message);
     throw new Error("Processing failed");
