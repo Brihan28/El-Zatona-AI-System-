@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import axios from "axios";
 import { useLocation } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -65,6 +66,20 @@ const SummaryPage = () => {
 
     fetchLatestExtractedText();
   }, [state.extractedText, state.title]);
+
+const SUMMARY_API_URL = "http://localhost:5000/api/summaries/generate";
+
+const SummaryPage = () => {
+  const [length, setLength] = useState<"short" | "medium" | "long">("medium");
+  const [summary, setSummary] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const location = useLocation();
+  const state = (location.state ?? {}) as SummaryLocationState;
+
+  const extractedText = state.extractedText || localStorage.getItem("extractedPdfText") || "";
+  const lectureTitle = state.title || "Lecture Notes";
 
   const displaySummary = useMemo(() => {
     if (!summary) return "";
@@ -147,6 +162,7 @@ const SummaryPage = () => {
           </div>
 
           {error && <p className="text-sm text-destructive mb-4">{error}</p>}
+
           {loading && <p className="text-sm text-muted-foreground">Generating summary, please wait...</p>}
 
           {!loading && !summary && !error && (
