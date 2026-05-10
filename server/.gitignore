@@ -137,5 +137,8 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+<<<<<<< HEAD
+=======
 
 uploads/*
+>>>>>>> ai-summary-update

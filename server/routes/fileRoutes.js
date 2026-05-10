@@ -1,10 +1,19 @@
 const express = require("express");
 const router = express.Router();
 
-const { uploadFile } = require("../controllers/fileController");
+
+const {
+  uploadFile,
+  getUserFiles,
+  getFileById,
+  deleteFile,
+} = require("../controllers/fileController");
 const upload = require("../middleware/upload");
+const auth = require("../middleware/auth");
 
-// POST /api/files/upload
-router.post("/upload", upload.single("file"), uploadFile);
-
+// 🔐 PROTECTED
+router.post("/upload", auth, upload.single("file"), uploadFile);
+router.get("/", auth, getUserFiles);
+router.get("/:id", auth, getFileById);
+router.delete("/:id", auth, deleteFile);
 module.exports = router;
