@@ -77,7 +77,7 @@ ${chunk}
 };
 
 // 🔹 FINAL REFINE
-const refineFinal = async (text) => {
+const refineFinal = async (text, length = "medium") => {
   const prompt = `
 Create clean, well-structured study notes.
 
@@ -88,6 +88,8 @@ RULES:
 - Use clear headings
 - Keep explanations detailed
 - DO NOT shorten too much
+- Target length: short = concise high-level points, medium = balanced detail, long = detailed notes
+- Requested length: ${length}
 
 TEXT:
 ${text}
@@ -96,7 +98,7 @@ ${text}
 };
 
 // 🚀 MAIN FUNCTION
-const summarizeText = async (text) => {
+const summarizeText = async (text, length = "medium") => {
   try {
     text = cleanText(text);
 
@@ -112,7 +114,7 @@ const summarizeText = async (text) => {
 
     const combined = organized.join("\n\n");
 
-    const final = await refineFinal(combined);
+    const final = await refineFinal(combined, length);
 
     return final;
 

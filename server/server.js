@@ -17,11 +17,13 @@ const authRoutes = require("./routes/auth");
 const fileRoutes = require("./routes/fileRoutes");
 const quizRoutes = require("./routes/quizRoutes");
 const studyRoutes = require("./routes/studyPlanRoutes");
+const summaryRoutes = require("./routes/summaryRoutes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/files", fileRoutes);
 app.use("/api/quiz", quizRoutes);
 app.use("/api/study", studyRoutes);
+app.use("/api/summaries", summaryRoutes);
 
 // Test route
 app.get("/", (req, res) => {

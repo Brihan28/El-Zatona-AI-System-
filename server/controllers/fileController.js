@@ -31,7 +31,10 @@ const uploadFile = async (req, res) => {
     }
 
     // 4️⃣ Limit text
-    const textToSummarize = data.text.substring(0, 2000);
+    const extractedText = data.text.trim();
+
+    // 4️⃣ Limit text for AI pipeline
+    const textToSummarize = extractedText.substring(0, 2000);
 
     // 5️⃣ AI Summary
     const summary = await summarizeText(textToSummarize);
@@ -48,6 +51,7 @@ const uploadFile = async (req, res) => {
       contentType: req.file.mimetype,
       summary,
       quiz,
+      extractedText,
     });
 
     // 🔥 DEBUG: after DB save
@@ -59,6 +63,7 @@ const uploadFile = async (req, res) => {
       fileId: savedFile._id,
       summary,
       quiz,
+      extractedText,
     });
 
   } catch (error) {
@@ -75,6 +80,7 @@ const uploadFile = async (req, res) => {
 const getUserFiles = async (req, res) => {
   try {
     const files = await File.find({ user: req.user })
+      .select("filename summary extractedText quiz attempts uploadedAt contentType")
       .sort({ uploadedAt: -1 });
 
     res.json(files);
@@ -133,9 +139,27 @@ const deleteFile = async (req, res) => {
   }
 };
 
+const getFileDetails = async (req, res) => {
+  try {
+    const file = await File.findOne({
+      _id: req.params.id,
+      user: req.user,
+    }).select("filename extractedText summary uploadedAt");
+
+    if (!file) {
+      return res.status(404).json({ msg: "File not found" });
+    }
+
+    res.json(file);
+  } catch (err) {
+    res.status(500).json({ msg: "Server error" });
+  }
+};
+
 module.exports = {
   uploadFile,
   getUserFiles,
   getFileById,
+  getFileDetails,
   deleteFile,
 };
