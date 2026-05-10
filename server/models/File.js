@@ -11,6 +11,7 @@ const FileSchema = new mongoose.Schema({
   fileData: Buffer, // 🔥 STORE PDF
   contentType: String,
   summary: String,
+  extractedText: String,
 
   quiz: [
     {

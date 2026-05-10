@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { useMemo, useState } from "react";
 import axios from "axios";
 import { useLocation } from "react-router-dom";
@@ -11,6 +12,60 @@ interface SummaryLocationState {
   extractedText?: string;
   title?: string;
 }
+
+interface UploadedFile {
+  _id: string;
+  filename: string;
+  extractedText?: string;
+  uploadedAt: string;
+}
+
+const SUMMARY_API_URL = "http://localhost:5000/api/summaries/generate";
+const FILES_API_URL = "http://localhost:5000/api/files";
+
+const SummaryPage = () => {
+  const [length, setLength] = useState<"short" | "medium" | "long">("medium");
+  const [summary, setSummary] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [lectureTitle, setLectureTitle] = useState("Lecture Notes");
+  const [extractedText, setExtractedText] = useState("");
+
+  const location = useLocation();
+  const state = (location.state ?? {}) as SummaryLocationState;
+
+  useEffect(() => {
+    const stateText = state.extractedText?.trim();
+
+    if (stateText) {
+      setExtractedText(stateText);
+      setLectureTitle(state.title || "Lecture Notes");
+      return;
+    }
+
+    const fetchLatestExtractedText = async () => {
+      try {
+        const { data } = await axios.get<UploadedFile[]>(FILES_API_URL, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+
+        const latestWithText = data.find((file) => file.extractedText?.trim());
+
+        if (!latestWithText?.extractedText) {
+          return;
+        }
+
+        setExtractedText(latestWithText.extractedText);
+        setLectureTitle(latestWithText.filename || "Lecture Notes");
+      } catch (err) {
+        console.error("Failed to fetch files", err);
+      }
+    };
+
+    fetchLatestExtractedText();
+  }, [state.extractedText, state.title]);
 
 const SUMMARY_API_URL = "http://localhost:5000/api/summaries/generate";
 
