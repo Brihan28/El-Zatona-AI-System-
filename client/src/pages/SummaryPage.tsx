@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMemo, useState } from "react";
 import axios from "axios";
 import { useLocation } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -11,13 +10,13 @@ import { RefreshCw, FileText } from "lucide-react";
 interface SummaryLocationState {
   extractedText?: string;
   title?: string;
+  fileId?: string;
 }
 
-interface UploadedFile {
+interface FileDetails {
   _id: string;
   filename: string;
   extractedText?: string;
-  uploadedAt: string;
 }
 
 const SUMMARY_API_URL = "http://localhost:5000/api/summaries/generate";
@@ -43,57 +42,40 @@ const SummaryPage = () => {
       return;
     }
 
-    const fetchLatestExtractedText = async () => {
+    const fetchExtractedText = async () => {
       try {
-        const { data } = await axios.get<UploadedFile[]>(FILES_API_URL, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
+        const token = localStorage.getItem("token");
+        const headers = { Authorization: `Bearer ${token}` };
 
-        const latestWithText = data.find((file) => file.extractedText?.trim());
-
-        if (!latestWithText?.extractedText) {
-          return;
+        if (state.fileId) {
+          const { data } = await axios.get<FileDetails>(`${FILES_API_URL}/${state.fileId}/details`, { headers });
+          if (data.extractedText?.trim()) {
+            setExtractedText(data.extractedText);
+            setLectureTitle(data.filename || "Lecture Notes");
+            return;
+          }
         }
 
-        setExtractedText(latestWithText.extractedText);
-        setLectureTitle(latestWithText.filename || "Lecture Notes");
+        const { data } = await axios.get<FileDetails[]>(FILES_API_URL, { headers });
+        const latestWithText = data.find((file) => file.extractedText?.trim());
+
+        if (latestWithText?.extractedText) {
+          setExtractedText(latestWithText.extractedText);
+          setLectureTitle(latestWithText.filename || "Lecture Notes");
+        }
       } catch (err) {
-        console.error("Failed to fetch files", err);
+        console.error("Failed to fetch extracted text", err);
       }
     };
 
-    fetchLatestExtractedText();
-  }, [state.extractedText, state.title]);
-
-const SUMMARY_API_URL = "http://localhost:5000/api/summaries/generate";
-
-const SummaryPage = () => {
-  const [length, setLength] = useState<"short" | "medium" | "long">("medium");
-  const [summary, setSummary] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const location = useLocation();
-  const state = (location.state ?? {}) as SummaryLocationState;
-
-  const extractedText = state.extractedText || localStorage.getItem("extractedPdfText") || "";
-  const lectureTitle = state.title || "Lecture Notes";
+    fetchExtractedText();
+  }, [state.extractedText, state.fileId, state.title]);
 
   const displaySummary = useMemo(() => {
     if (!summary) return "";
-
     const lines = summary.split("\n").filter((line) => line.trim() !== "");
-
-    if (length === "short") {
-      return lines.slice(0, Math.max(4, Math.ceil(lines.length * 0.35))).join("\n");
-    }
-
-    if (length === "medium") {
-      return lines.slice(0, Math.max(8, Math.ceil(lines.length * 0.7))).join("\n");
-    }
-
+    if (length === "short") return lines.slice(0, Math.max(4, Math.ceil(lines.length * 0.35))).join("\n");
+    if (length === "medium") return lines.slice(0, Math.max(8, Math.ceil(lines.length * 0.7))).join("\n");
     return summary;
   }, [length, summary]);
 
@@ -107,16 +89,12 @@ const SummaryPage = () => {
     setError("");
 
     try {
-      const { data } = await axios.post<{ summary: string }>(SUMMARY_API_URL, {
-        text: extractedText,
-      });
-
+      const { data } = await axios.post<{ summary: string }>(SUMMARY_API_URL, { text: extractedText });
       setSummary(data.summary || "");
     } catch (err) {
       const message = axios.isAxiosError(err)
         ? err.response?.data?.error || "Failed to generate summary"
         : "Failed to generate summary";
-
       setError(message);
     } finally {
       setLoading(false);
@@ -162,38 +140,20 @@ const SummaryPage = () => {
           </div>
 
           {error && <p className="text-sm text-destructive mb-4">{error}</p>}
-
           {loading && <p className="text-sm text-muted-foreground">Generating summary, please wait...</p>}
-
-          {!loading && !summary && !error && (
-            <p className="text-sm text-muted-foreground">Click "Generate Summary" to create study notes from your extracted PDF text.</p>
-          )}
+          {!loading && !summary && !error && <p className="text-sm text-muted-foreground">Click "Generate Summary" to create study notes from your extracted PDF text.</p>}
 
           {!loading && !!summary && (
             <div className="prose prose-sm max-w-none text-foreground">
-              {displaySummary.split("\n").map((line, i) => {
-                if (line.startsWith("**") && line.endsWith("**")) {
-                  return (
-                    <h3 key={i} className="font-heading text-base font-semibold mt-4 mb-2">
-                      {line.replace(/\*\*/g, "")}
-                    </h3>
-                  );
-                }
-
-                if (line.startsWith("- ")) {
-                  return (
-                    <li key={i} className="text-sm text-muted-foreground ml-4">
-                      {line.slice(2)}
-                    </li>
-                  );
-                }
-
-                return (
-                  <p key={i} className="text-sm text-muted-foreground leading-relaxed">
-                    {line}
-                  </p>
-                );
-              })}
+              {displaySummary.split("\n").map((line, i) =>
+                line.startsWith("**") && line.endsWith("**") ? (
+                  <h3 key={i} className="font-heading text-base font-semibold mt-4 mb-2">{line.replace(/\*\*/g, "")}</h3>
+                ) : line.startsWith("- ") ? (
+                  <li key={i} className="text-sm text-muted-foreground ml-4">{line.slice(2)}</li>
+                ) : (
+                  <p key={i} className="text-sm text-muted-foreground leading-relaxed">{line}</p>
+                )
+              )}
             </div>
           )}
         </Card>

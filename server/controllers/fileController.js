@@ -139,9 +139,27 @@ const deleteFile = async (req, res) => {
   }
 };
 
+const getFileDetails = async (req, res) => {
+  try {
+    const file = await File.findOne({
+      _id: req.params.id,
+      user: req.user,
+    }).select("filename extractedText summary uploadedAt");
+
+    if (!file) {
+      return res.status(404).json({ msg: "File not found" });
+    }
+
+    res.json(file);
+  } catch (err) {
+    res.status(500).json({ msg: "Server error" });
+  }
+};
+
 module.exports = {
   uploadFile,
   getUserFiles,
   getFileById,
+  getFileDetails,
   deleteFile,
 };

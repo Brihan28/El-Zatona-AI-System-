@@ -199,7 +199,7 @@ const UploadPage = () => {
                     size="sm"
                     onClick={() =>
                       navigate("/summary", {
-                        state: { extractedText: f.extractedText || "", title: f.filename },
+                        state: { fileId: f._id, extractedText: f.extractedText || "", title: f.filename },
                       })
                     }
                   >
